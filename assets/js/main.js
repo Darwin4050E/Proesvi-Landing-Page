@@ -247,3 +247,135 @@ if (st) {
     });
   });
 }
+
+
+// Testimonios.
+
+function fetchTestimonials(url) {
+  return fetch(url)
+          .then((response) => 
+            { 
+              if(!response.ok){
+                throw new Error("HTML Error");
+              }
+              return response.json();
+            }
+          )
+          .then((data) => 
+            { 
+              return { success: true, body: data };
+            }
+          )
+          .catch((error) => 
+            { 
+              return { success: false, body: error.message }; 
+            }
+          );
+}
+
+function renderTestimonials(){
+  fetchTestimonials("https://raw.githubusercontent.com/Darwin4050E/Testimonios-Proesvi-Landing-Page/main/testimonios.json")
+    .then((value) => 
+      {
+        if(value.success){
+          let testimonialsContainer = document.querySelector(".testimonial-carousel");
+          if(!testimonialsContainer){
+            console.error('Contenedor .testimonial-carousel no encontrado en el DOM.');
+            return;
+          }
+
+          // Nos aseguramos de que exista el wrapper (si Swiper ya lo modificó, lo creamos)
+          let swiperWrapper = testimonialsContainer.querySelector(".swiper-wrapper");
+          if(!swiperWrapper){
+            // Se intenta crear un wrapper si falta
+            swiperWrapper = document.createElement('div');
+            swiperWrapper.className = 'swiper-wrapper';
+            testimonialsContainer.appendChild(swiperWrapper);
+          }
+
+          // Se vacían solo las tarjetas del carrusel
+          swiperWrapper.innerHTML = "";
+          
+          value.body.forEach((testimonial) => 
+            {
+              let slideTemplate = `<div class="swiper-slide">
+                                    <div class="rounded-xl bg-body-light-1 dark:bg-body-dark-12/10 px-5 py-8 shadow-card-2 sm:px-8">
+                                      <p class="mb-6 text-base text-body-light-11 dark:text-body-dark-11">
+                                        "${testimonial.mensaje}"
+                                      </p>
+                                      <figure class="flex items-center gap-4">
+                                        <div class="h-[50px] w-[50px] overflow-hidden">
+                                          <img src="${testimonial.foto}" alt="Testimonial picture" class="h-full w-full rounded-full object-cover"/>
+                                        </div>
+                                        <figcaption class="flex-grow">
+                                          <h3 class="text-sm font-semibold text-body-light-11 dark:text-body-dark-11">${testimonial.nombre}</h3>
+                                          <p class="text-xs text-body-light-10 dark:text-body-dark-10">${testimonial.cargo}</p>
+                                        </figcaption>
+                                      </figure>
+                                    </div>
+                                  </div>`;
+              swiperWrapper.innerHTML += slideTemplate;
+            }
+          );
+
+          // Nos aseguramos de que existan los botones de navegación (prev / next)
+          let prevBtn = testimonialsContainer.querySelector('.swiper-button-prev');
+          let nextBtn = testimonialsContainer.querySelector('.swiper-button-next');
+          if (!prevBtn || !nextBtn) {
+            // Si no existen, se crea un contenedor de botones con las mismas características del que antes se encontraba en el HTML
+            const navWrap = document.createElement('div');
+            navWrap.className = 'mt-[60px] flex items-center justify-center gap-1';
+
+            const prev = document.createElement('div');
+            prev.className = 'swiper-button-prev';
+            prev.innerHTML = '<i class="lni lni-arrow-left"></i>';
+
+            const next = document.createElement('div');
+            next.className = 'swiper-button-next';
+            next.innerHTML = '<i class="lni lni-arrow-right"></i>';
+
+            navWrap.appendChild(prev);
+            navWrap.appendChild(next);
+
+            testimonialsContainer.appendChild(navWrap);
+
+            prevBtn = prev;
+            nextBtn = next;
+          }
+
+          // Se crea nueva instancia con las mismas opciones que antes se encontraban en el HTML
+          window.testimonialSwiper = new Swiper(testimonialsContainer, {
+            observer: true,
+            observeParents: true,
+            slidesPerView: 1,
+            spaceBetween: 30,
+            navigation: {
+              nextEl: nextBtn,
+              prevEl: prevBtn,
+            },
+            breakpoints: {
+              640: {
+                slidesPerView: 2,
+                spaceBetween: 30,
+              },
+              1024: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+              },
+              1280: {
+                slidesPerView: 3,
+                spaceBetween: 30,
+              },
+            },
+          });
+        }else{
+          window.alert(value.body)
+        }
+      }
+    ) 
+}
+
+// Se cargan los testimonios cuando el DOM está listo
+window.addEventListener("load", function() {
+  renderTestimonials();
+});

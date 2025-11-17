@@ -326,7 +326,10 @@ function renderTestimonials(){
           if (!prevBtn || !nextBtn) {
             // Si no existen, se crea un contenedor de botones con las mismas características del que antes se encontraba en el HTML
             const navWrap = document.createElement('div');
-            navWrap.className = 'mt-[60px] flex items-center justify-center gap-1';
+            navWrap.className = 'flex items-center justify-center gap-1';
+            // Añadimos margen en línea porque las clases dinámicas en JS
+            // pueden no ser incluidas por Tailwind durante la compilación
+            navWrap.style.marginTop = '60px';
 
             const prev = document.createElement('div');
             prev.className = 'swiper-button-prev';

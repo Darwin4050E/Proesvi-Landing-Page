@@ -1,5 +1,7 @@
 "use strict";
 
+import { FIREBASE_CONFIG } from './firebase-config.js';
+
 // Page loading
 var pageLoading = document.querySelector(".page-loading");
 

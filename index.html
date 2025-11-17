@@ -987,7 +987,7 @@
                   </p>
                 </div>
 
-                <form action="#" method="POST" class="flex flex-col gap-6">
+                <form id="contactForm" action="#" method="POST" class="flex flex-col gap-6" data-endpoint="https://formspree.io/f/YOUR_ID">
                   <div class="row">
                     <div class="col-12 md:col-6">
                       <input
@@ -1048,6 +1048,7 @@
                           Enviar Mensaje
                         </button>
                       </div>
+                      <div id="contactFormMsg" class="mt-4 text-center" aria-live="polite"></div>
                     </div>
                   </div>
                 </form>
@@ -1192,6 +1193,7 @@
     <script src="https://cdn.jsdelivr.net/gh/mcstudios/glightbox/dist/js/glightbox.min.js"></script>
     <script src="https://unpkg.com/scrollreveal@4.0.0/dist/scrollreveal.min.js"></script>
 
+    <script src="./assets/js/firebase-config.js"></script>
     <script src="./assets/js/main.js"></script>
     <script>
       // Scroll Reveal

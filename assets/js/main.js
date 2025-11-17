@@ -379,3 +379,64 @@ function renderTestimonials(){
 window.addEventListener("load", function() {
   renderTestimonials();
 });
+  
+
+document.addEventListener('DOMContentLoaded', function(){
+  const contactForm = document.getElementById('contactForm');
+  if(!contactForm) return;
+
+  function showContactMessage(text, type){
+    const msgEl = document.getElementById('contactFormMsg');
+    if(!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.className = type === 'success' ? 'mt-4 text-center text-green-600' : 'mt-4 text-center text-red-600';
+  }
+
+  contactForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const submitBtn = contactForm.querySelector('button[type="submit"]');
+    if(submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-50'); }
+
+    const formData = {
+      name: contactForm.querySelector('input[name="name"]').value,
+      email: contactForm.querySelector('input[name="email"]').value,
+      phone: contactForm.querySelector('input[name="phone"]').value,
+      subject: contactForm.querySelector('input[name="subject"]').value,
+      message: contactForm.querySelector('textarea[name="message"]').value,
+      timestamp: new Date().toISOString()
+    };
+
+    if(!formData.name || !formData.email || !formData.message){
+      showContactMessage('Por favor, rellena los campos requeridos (nombre, email, mensaje).', 'error');
+      if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
+      return;
+    }
+
+    try{
+      
+      const timestamp = Date.now();
+      const firebaseEndpoint = `${FIREBASE_CONFIG.databaseURL}/contactos/${timestamp}.json`;
+
+      const resp = await fetch(firebaseEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if(resp.ok){
+        showContactMessage('Mensaje enviado. ¡Gracias! Te contactaremos pronto.', 'success');
+        contactForm.reset();
+      } else {
+        const data = await resp.json();
+        const message = data && data.error ? data.error : 'Error al enviar el formulario. Intenta de nuevo.';
+        showContactMessage(message, 'error');
+      }
+    }catch(err){
+      showContactMessage('Error de red: ' + err.message, 'error');
+    }finally{
+      if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
+    }
+  });
+});

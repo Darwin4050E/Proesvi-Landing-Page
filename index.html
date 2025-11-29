@@ -911,6 +911,33 @@
 
           <div id="testimonialsContainer" class="swiper testimonial-carousel common-carousel scroll-revealed">
           </div>
+          <!-- Formulario para agregar un testimonio -->
+          <div class="max-w-2xl mx-auto mt-8 scroll-revealed">
+            <form id="testimonialForm" class="bg-body-light-1 dark:bg-body-dark-2 rounded-xl p-6 shadow-card-1">
+              <h3 class="text-lg font-semibold mb-4 p-4">Añadir Testimonio</h3>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                <div>
+                  <label class="block text-sm mb-1">Nombre *</label>
+                  <input name="nombre" type="text" required class="w-full rounded-md border px-3 py-2" />
+                </div>
+                <div>
+                  <label class="block text-sm mb-1">Cargo</label>
+                  <input name="cargo" type="text" class="w-full rounded-md border px-3 py-2" />
+                </div>
+                <!-- Foto no es requerida; se usará un placeholder si se omite -->
+                <div class="sm:col-span-2">
+                  <label class="block text-sm mb-1">Mensaje *</label>
+                  <textarea name="mensaje" required rows="4" class="w-full rounded-md border px-3 py-2"></textarea>
+                </div>
+              </div>
+
+              <div class="mt-6 flex flex-col items-center gap-6 p-4">
+                <button type="submit" class="inline-flex items-center px-6 py-3 rounded-md bg-primary text-white font-medium hover:opacity-90 transition-opacity">Enviar Testimonio</button>
+                <div id="testimonialFormMsg" class="text-sm text-center w-full max-w-md"></div>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
 

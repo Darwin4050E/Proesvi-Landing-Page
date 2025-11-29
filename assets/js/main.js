@@ -251,136 +251,148 @@ if (st) {
 }
 
 
-// Testimonios.
+// Testimonios: leer/escribir desde la base de datos de Firebase
 
-function fetchTestimonials(url) {
-  return fetch(url)
-          .then((response) => 
-            { 
-              if(!response.ok){
-                throw new Error("HTML Error");
-              }
-              return response.json();
-            }
-          )
-          .then((data) => 
-            { 
-              return { success: true, body: data };
-            }
-          )
-          .catch((error) => 
-            { 
-              return { success: false, body: error.message }; 
-            }
-          );
+async function fetchTestimonialsFromDB() {
+  try {
+    const resp = await fetch(`${FIREBASE_CONFIG.databaseURL}/testimonios.json`);
+    if (!resp.ok) throw new Error('Error al obtener testimonios de la base de datos');
+    const data = await resp.json();
+    if (data === null) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') return Object.values(data);
+    return [];
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
 }
 
-function renderTestimonials(){
-  fetchTestimonials("https://raw.githubusercontent.com/Darwin4050E/Testimonios-Proesvi-Landing-Page/main/testimonios.json")
-    .then((value) => 
-      {
-        if(value.success){
-          let testimonialsContainer = document.querySelector(".testimonial-carousel");
-          if(!testimonialsContainer){
-            console.error('Contenedor .testimonial-carousel no encontrado en el DOM.');
-            return;
-          }
+async function ensureDefaultTestimonials(defaults) {
+  try {
+    const resp = await fetch(`${FIREBASE_CONFIG.databaseURL}/testimonios.json`);
+    let data = null;
+    if (resp.ok) data = await resp.json();
 
-          // Nos aseguramos de que exista el wrapper (si Swiper ya lo modificó, lo creamos)
-          let swiperWrapper = testimonialsContainer.querySelector(".swiper-wrapper");
-          if(!swiperWrapper){
-            // Se intenta crear un wrapper si falta
-            swiperWrapper = document.createElement('div');
-            swiperWrapper.className = 'swiper-wrapper';
-            testimonialsContainer.appendChild(swiperWrapper);
-          }
+    const emptyArray = data === null || (Array.isArray(data) && data.length === 0);
+    const emptyObject = typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0;
 
-          // Se vacían solo las tarjetas del carrusel
-          swiperWrapper.innerHTML = "";
-          
-          value.body.forEach((testimonial) => 
-            {
-              let slideTemplate = `<div class="swiper-slide">
-                                    <div class="rounded-xl bg-body-light-1 dark:bg-body-dark-12/10 px-5 py-8 shadow-card-2 sm:px-8">
-                                      <p class="mb-6 text-base text-body-light-11 dark:text-body-dark-11">
-                                        "${testimonial.mensaje}"
-                                      </p>
-                                      <figure class="flex items-center gap-4">
-                                        <div class="h-[50px] w-[50px] overflow-hidden">
-                                          <img src="${testimonial.foto}" alt="Testimonial picture" class="h-full w-full rounded-full object-cover"/>
-                                        </div>
-                                        <figcaption class="flex-grow">
-                                          <h3 class="text-sm font-semibold text-body-light-11 dark:text-body-dark-11">${testimonial.nombre}</h3>
-                                          <p class="text-xs text-body-light-10 dark:text-body-dark-10">${testimonial.cargo}</p>
-                                        </figcaption>
-                                      </figure>
-                                    </div>
-                                  </div>`;
-              swiperWrapper.innerHTML += slideTemplate;
-            }
-          );
-
-          // Nos aseguramos de que existan los botones de navegación (prev / next)
-          let prevBtn = testimonialsContainer.querySelector('.swiper-button-prev');
-          let nextBtn = testimonialsContainer.querySelector('.swiper-button-next');
-          if (!prevBtn || !nextBtn) {
-            // Si no existen, se crea un contenedor de botones con las mismas características del que antes se encontraba en el HTML
-            const navWrap = document.createElement('div');
-            navWrap.className = 'flex items-center justify-center gap-1';
-            // Añadimos margen en línea porque las clases dinámicas en JS
-            // pueden no ser incluidas por Tailwind durante la compilación
-            navWrap.style.marginTop = '60px';
-
-            const prev = document.createElement('div');
-            prev.className = 'swiper-button-prev';
-            prev.innerHTML = '<i class="lni lni-arrow-left"></i>';
-
-            const next = document.createElement('div');
-            next.className = 'swiper-button-next';
-            next.innerHTML = '<i class="lni lni-arrow-right"></i>';
-
-            navWrap.appendChild(prev);
-            navWrap.appendChild(next);
-
-            testimonialsContainer.appendChild(navWrap);
-
-            prevBtn = prev;
-            nextBtn = next;
-          }
-
-          // Se crea nueva instancia con las mismas opciones que antes se encontraban en el HTML
-          window.testimonialSwiper = new Swiper(testimonialsContainer, {
-            observer: true,
-            observeParents: true,
-            slidesPerView: 1,
-            spaceBetween: 30,
-            navigation: {
-              nextEl: nextBtn,
-              prevEl: prevBtn,
-            },
-            breakpoints: {
-              640: {
-                slidesPerView: 2,
-                spaceBetween: 30,
-              },
-              1024: {
-                slidesPerView: 3,
-                spaceBetween: 30,
-              },
-              1280: {
-                slidesPerView: 3,
-                spaceBetween: 30,
-              },
-            },
-          });
-        }else{
-          window.alert(value.body)
-        }
-      }
-    ) 
+    if (emptyArray || emptyObject || data === null) {
+      await fetch(`${FIREBASE_CONFIG.databaseURL}/testimonios.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(defaults),
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('Error al inicializar testimonios por defecto', err);
+    return false;
+  }
 }
 
-// Se cargan los testimonios cuando el DOM está listo
+async function renderTestimonials(){
+  // Si no hay datos, inicializamos con algunos testimonios por defecto
+  const defaults = [
+    { nombre: 'María Pérez', cargo: 'Directora', foto: 'https://picsum.photos/200', mensaje: 'Excelente servicio y atención personalizada.' },
+    { nombre: 'Juan Gómez', cargo: 'Cliente', foto: 'https://picsum.photos/200', mensaje: 'Resultados rápidos y profesionales.' },
+    { nombre: 'Luisa Martínez', cargo: 'Consultora', foto: 'https://picsum.photos/200', mensaje: 'Recomendados al 100% por su compromiso.' }
+  ];
+
+  let list = await fetchTestimonialsFromDB();
+  if (!list || list.length === 0) {
+    const initOk = await ensureDefaultTestimonials(defaults);
+    if (initOk) {
+      list = await fetchTestimonialsFromDB();
+    } else {
+      // No fue posible escribir en la DB (posible permiso denegado).
+      // Hacemos fallback a los valores por defecto localmente para que siempre haya contenido.
+      console.warn('No fue posible inicializar testimonios en la DB; usando defaults locales');
+      list = defaults;
+    }
+  }
+
+  let testimonialsContainer = document.querySelector(".testimonial-carousel");
+  if(!testimonialsContainer){
+    console.error('Contenedor .testimonial-carousel no encontrado en el DOM.');
+    return;
+  }
+
+  let swiperWrapper = testimonialsContainer.querySelector(".swiper-wrapper");
+  if(!swiperWrapper){
+    swiperWrapper = document.createElement('div');
+    swiperWrapper.className = 'swiper-wrapper';
+    testimonialsContainer.appendChild(swiperWrapper);
+  }
+
+  swiperWrapper.innerHTML = "";
+
+  list.forEach((testimonial) => {
+    let slideTemplate = `<div class="swiper-slide">
+                              <div class="rounded-xl bg-body-light-1 dark:bg-body-dark-12/10 px-5 py-8 shadow-card-2 sm:px-8">
+                                <p class="mb-6 text-base text-body-light-11 dark:text-body-dark-11">
+                                  "${testimonial.mensaje}"
+                                </p>
+                                <figure class="flex items-center gap-4">
+                                  <div class="h-[50px] w-[50px] overflow-hidden">
+                                    <img src="https://picsum.photos/200" alt="Testimonial picture" class="h-full w-full rounded-full object-cover"/>
+                                  </div>
+                                  <figcaption class="flex-grow">
+                                    <h3 class="text-sm font-semibold text-body-light-11 dark:text-body-dark-11">${testimonial.nombre}</h3>
+                                    <p class="text-xs text-body-light-10 dark:text-body-dark-10">${testimonial.cargo || ''}</p>
+                                  </figcaption>
+                                </figure>
+                              </div>
+                            </div>`;
+    swiperWrapper.innerHTML += slideTemplate;
+  });
+
+  let prevBtn = testimonialsContainer.querySelector('.swiper-button-prev');
+  let nextBtn = testimonialsContainer.querySelector('.swiper-button-next');
+  if (!prevBtn || !nextBtn) {
+    const navWrap = document.createElement('div');
+    navWrap.className = 'flex items-center justify-center gap-1';
+    navWrap.style.marginTop = '60px';
+
+    const prev = document.createElement('div');
+    prev.className = 'swiper-button-prev';
+    prev.innerHTML = '<i class="lni lni-arrow-left"></i>';
+
+    const next = document.createElement('div');
+    next.className = 'swiper-button-next';
+    next.innerHTML = '<i class="lni lni-arrow-right"></i>';
+
+    navWrap.appendChild(prev);
+    navWrap.appendChild(next);
+
+    testimonialsContainer.appendChild(navWrap);
+
+    prevBtn = prev;
+    nextBtn = next;
+  }
+
+  if (window.testimonialSwiper && typeof window.testimonialSwiper.destroy === 'function') {
+    try { window.testimonialSwiper.destroy(true, true); } catch(e){}
+  }
+
+  window.testimonialSwiper = new Swiper(testimonialsContainer, {
+    observer: true,
+    observeParents: true,
+    slidesPerView: 1,
+    spaceBetween: 30,
+    navigation: {
+      nextEl: nextBtn,
+      prevEl: prevBtn,
+    },
+    breakpoints: {
+      640: { slidesPerView: 2, spaceBetween: 30 },
+      1024: { slidesPerView: 3, spaceBetween: 30 },
+      1280: { slidesPerView: 3, spaceBetween: 30 },
+    },
+  });
+}
+
+// Cargar testimonios al cargar la página
 window.addEventListener("load", function() {
   renderTestimonials();
 });
@@ -388,16 +400,17 @@ window.addEventListener("load", function() {
 
 document.addEventListener('DOMContentLoaded', function(){
   const contactForm = document.getElementById('contactForm');
-  if(!contactForm) return;
+  // contactForm puede no existir en algunas páginas; continuamos para manejar otros formularios (testimonios)
 
-  function showContactMessage(text, type){
-    const msgEl = document.getElementById('contactFormMsg');
-    if(!msgEl) return;
-    msgEl.textContent = text;
-    msgEl.className = type === 'success' ? 'mt-4 text-center text-green-600' : 'mt-4 text-center text-red-600';
-  }
+  if (contactForm) {
+    function showContactMessage(text, type){
+      const msgEl = document.getElementById('contactFormMsg');
+      if(!msgEl) return;
+      msgEl.textContent = text;
+      msgEl.className = type === 'success' ? 'mt-4 text-center text-green-600' : 'mt-4 text-center text-red-600';
+    }
 
-  contactForm.addEventListener('submit', async function(e){
+    contactForm.addEventListener('submit', async function(e){
     e.preventDefault();
     const submitBtn = contactForm.querySelector('button[type="submit"]');
     if(submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-50'); }
@@ -417,31 +430,95 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
 
-    try{
-      
-      const timestamp = Date.now();
-      const firebaseEndpoint = `${FIREBASE_CONFIG.databaseURL}/contactos/${timestamp}.json`;
+      try{
+        const timestamp = Date.now();
+        const firebaseEndpoint = `${FIREBASE_CONFIG.databaseURL}/contactos/${timestamp}.json`;
 
-      const resp = await fetch(firebaseEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
+        const resp = await fetch(firebaseEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
 
-      if(resp.ok){
-        showContactMessage('Mensaje enviado. ¡Gracias! Te contactaremos pronto.', 'success');
-        contactForm.reset();
-      } else {
-        const data = await resp.json();
-        const message = data && data.error ? data.error : 'Error al enviar el formulario. Intenta de nuevo.';
-        showContactMessage(message, 'error');
+        if(resp.ok){
+          showContactMessage('Mensaje enviado. ¡Gracias! Te contactaremos pronto.', 'success');
+          contactForm.reset();
+        } else {
+          if (resp.status === 401 || resp.status === 403) {
+            showContactMessage('Permiso denegado: revisa las reglas de Realtime Database o configura autenticación.', 'error');
+          } else {
+            let data = null;
+            try { data = await resp.json(); } catch(e){}
+            const message = data && data.error ? data.error : 'Error al enviar el formulario. Intenta de nuevo.';
+            showContactMessage(message, 'error');
+          }
+        }
+      }catch(err){
+        showContactMessage('Error de red: ' + err.message, 'error');
+      }finally{
+        if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
       }
-    }catch(err){
-      showContactMessage('Error de red: ' + err.message, 'error');
-    }finally{
-      if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
-    }
-  });
+    });
+  }
+
+  // Manejador del formulario de testimonios
+  const testimonialForm = document.getElementById('testimonialForm');
+
+  function showTestimonialMessage(text, type){
+    const msgEl = document.getElementById('testimonialFormMsg');
+    if(!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.className = type === 'success' ? 'text-green-600' : 'text-red-600';
+  }
+
+  if(testimonialForm){
+    testimonialForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const submitBtn = testimonialForm.querySelector('button[type="submit"]');
+      if(submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-50'); }
+
+      const formData = {
+        nombre: testimonialForm.querySelector('input[name="nombre"]').value,
+        cargo: testimonialForm.querySelector('input[name="cargo"]').value,
+        foto: (testimonialForm.querySelector('input[name="foto"]') ? testimonialForm.querySelector('input[name="foto"]').value : '') || '/assets/img/avatar/1.jpg',
+        mensaje: testimonialForm.querySelector('textarea[name="mensaje"]').value,
+        timestamp: new Date().toISOString()
+      };
+
+      if(!formData.nombre || !formData.mensaje){
+        showTestimonialMessage('Por favor, rellena los campos requeridos (nombre, mensaje).', 'error');
+        if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
+        return;
+      }
+
+      try{
+        const resp = await fetch(`${FIREBASE_CONFIG.databaseURL}/testimonios.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if(resp.ok){
+          showTestimonialMessage('Testimonio agregado. Gracias.', 'success');
+          testimonialForm.reset();
+          await renderTestimonials();
+        } else {
+          if (resp.status === 401 || resp.status === 403) {
+            showTestimonialMessage('Permiso denegado: no se puede escribir en la base de datos. Revisa reglas o autenticación.', 'error');
+          } else {
+            let data = null;
+            try { data = await resp.json(); } catch(e){}
+            const message = data && data.error ? data.error : 'Error al guardar el testimonio.';
+            showTestimonialMessage(message, 'error');
+          }
+        }
+      }catch(err){
+        showTestimonialMessage('Error de red: ' + err.message, 'error');
+      }finally{
+        if(submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50'); }
+      }
+    });
+  }
 });
